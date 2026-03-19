@@ -19,7 +19,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--backend", choices=["heuristic", "openai"], default="heuristic")
     parser.add_argument("--base-url", default="http://127.0.0.1:8000/v1")
-    parser.add_argument("--model-name", default="Qwen2.5-Coder-7B-Instruct")
+    parser.add_argument("--model-name", default="Qwen/Qwen2.5-Coder-7B-Instruct")
     return parser.parse_args()
 
 

@@ -29,7 +29,7 @@
 
 第一版主模型固定為：
 
-- `Qwen2.5-Coder-7B-Instruct`
+- `Qwen/Qwen2.5-Coder-7B-Instruct`
 
 選擇理由：
 
@@ -48,7 +48,7 @@
 
 第一版 monitor 也使用同一個模型：
 
-- `Qwen2.5-Coder-7B-Instruct`
+- `Qwen/Qwen2.5-Coder-7B-Instruct`
 
 理由：
 
@@ -791,7 +791,7 @@ Gap Closure Rate =
 
 本專案第一版目前已固定：
 
-1. 主模型：`Qwen2.5-Coder-7B-Instruct`
+1. 主模型：`Qwen/Qwen2.5-Coder-7B-Instruct`
 2. Monitor 與 coder 先使用同一模型
 3. Benchmark：自建 20、FEA 20、SWE 20
 4. FEA 與 SWE 先用 Lite 子集

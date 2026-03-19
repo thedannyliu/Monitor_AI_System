@@ -13,7 +13,7 @@ cd /storage/ice1/2/9/eliu354/Projects/Monitor_AI_Sys
 
 CONDA_BIN="/storage/ice1/2/9/eliu354/miniconda3/bin/conda"
 BASE_URL="${MONITOR_BASE_URL:-http://127.0.0.1:8000/v1}"
-MODEL_NAME="${MONITOR_MODEL_NAME:-Qwen2.5-Coder-7B-Instruct}"
+MODEL_NAME="${MONITOR_MODEL_NAME:-Qwen/Qwen2.5-Coder-7B-Instruct}"
 MONITOR_RESULTS="${MONITOR_RESULTS_DIR:-results/pilot/openai_run_latest}"
 
 "$CONDA_BIN" run -n monitor-ai-system python scripts/run_execution_pilot.py \

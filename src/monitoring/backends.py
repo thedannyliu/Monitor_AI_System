@@ -8,6 +8,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, List
 
 from monitoring.prompts import build_monitor_messages
+from monitoring.schema import ALLOWED_NOTE_CATEGORIES, ALLOWED_PRIORITIES, ALLOWED_TYPES
 
 
 class MonitorBackendError(RuntimeError):
@@ -71,6 +72,7 @@ class OpenAICompatibleBackend(BaseMonitorBackend):
             "messages": build_monitor_messages(task, schema_hint),
             "temperature": 0.0,
             "top_p": 1.0,
+            "response_format": {"type": "json_object"},
         }
         data = json.dumps(payload).encode("utf-8")
         request = urllib.request.Request(
@@ -91,9 +93,10 @@ class OpenAICompatibleBackend(BaseMonitorBackend):
             raise MonitorBackendError("Unexpected response format from OpenAI-compatible backend") from exc
         cleaned = _strip_code_fences(content)
         try:
-            return json.loads(cleaned)
+            parsed = json.loads(cleaned)
         except json.JSONDecodeError as exc:
             raise MonitorBackendError("Model output is not valid JSON") from exc
+        return _coerce_report(task, parsed)
 
 
 def _strip_code_fences(text: str) -> str:
@@ -102,6 +105,234 @@ def _strip_code_fences(text: str) -> str:
         text = re.sub(r"^```(?:json)?", "", text).strip()
         text = re.sub(r"```$", "", text).strip()
     return text
+
+
+def _coerce_report(task: Dict[str, Any], parsed: Any) -> Dict[str, Any]:
+    assumptions = _extract_assumptions(task, parsed)
+    open_questions = _extract_open_questions(parsed, assumptions)
+    monitor_notes = _extract_monitor_notes(parsed, assumptions)
+
+    report = {
+        "task_id": task["task_id"],
+        "benchmark": task["benchmark"],
+        "spec_variant": "redacted",
+        "task_summary": task["redacted_spec"],
+        "assumptions": assumptions,
+        "open_questions": open_questions,
+        "monitor_notes": monitor_notes,
+        "schema_version": "v1",
+    }
+
+    if isinstance(parsed, dict):
+        report["task_id"] = str(parsed.get("task_id") or report["task_id"])
+        benchmark = parsed.get("benchmark")
+        if benchmark == task["benchmark"]:
+            report["benchmark"] = benchmark
+        spec_variant = parsed.get("spec_variant")
+        if spec_variant == "redacted":
+            report["spec_variant"] = spec_variant
+        task_summary = parsed.get("task_summary")
+        if isinstance(task_summary, str) and task_summary.strip():
+            report["task_summary"] = task_summary.strip()
+        schema_version = parsed.get("schema_version")
+        if schema_version == "v1":
+            report["schema_version"] = schema_version
+
+    return report
+
+
+def _extract_assumptions(task: Dict[str, Any], parsed: Any) -> List[Dict[str, Any]]:
+    if isinstance(parsed, dict):
+        if isinstance(parsed.get("assumptions"), list):
+            raw_items = parsed["assumptions"]
+        elif isinstance(parsed.get("hidden_assumptions"), list):
+            raw_items = parsed["hidden_assumptions"]
+        elif isinstance(parsed.get("assumption_candidates"), list):
+            raw_items = parsed["assumption_candidates"]
+        else:
+            raw_items = []
+    elif isinstance(parsed, list):
+        raw_items = parsed
+    else:
+        raw_items = []
+
+    items = [_coerce_assumption_item(task, item, index) for index, item in enumerate(raw_items, start=1)]
+    items = [item for item in items if item["statement"]]
+    if items:
+        return items[:4]
+    return HeuristicMonitorBackend().generate_report(task, {"schema_version": "v1"})["assumptions"]
+
+
+def _coerce_assumption_item(task: Dict[str, Any], item: Any, index: int) -> Dict[str, Any]:
+    if isinstance(item, str):
+        statement = item.strip()
+        item = {"statement": statement}
+    elif not isinstance(item, dict):
+        item = {}
+
+    statement = _first_text(
+        item,
+        ["statement", "assumption", "questionable_assumption", "description", "summary"],
+    )
+    evidence = _coerce_string_list(item.get("evidence"))
+    if not evidence:
+        inferred_impact = _first_text(item, ["impact", "reason", "rationale"])
+        if inferred_impact:
+            evidence = [inferred_impact]
+        else:
+            evidence = ["The redacted task omits implementation or validation details that affect execution choices."]
+
+    assumption_type = item.get("type")
+    if assumption_type not in ALLOWED_TYPES:
+        assumption_type = _infer_type(statement, evidence)
+
+    proposed_resolution = _first_text(
+        item,
+        ["proposed_resolution", "resolution", "clarifying_question", "follow_up"],
+    )
+    if not proposed_resolution:
+        proposed_resolution = f"Confirm whether this task requires: {statement.lower()}"
+
+    risk_if_wrong = _first_text(item, ["risk_if_wrong", "risk", "impact"])
+    if not risk_if_wrong:
+        risk_if_wrong = "The agent may implement a solution that is technically valid but misaligned with the hidden task constraint."
+
+    confidence = item.get("confidence", 0.55)
+    try:
+        confidence = float(confidence)
+    except (TypeError, ValueError):
+        confidence = 0.55
+    confidence = min(1.0, max(0.0, confidence))
+
+    needs_confirmation = item.get("needs_confirmation")
+    if not isinstance(needs_confirmation, bool):
+        needs_confirmation = True
+
+    linked_decisions = _coerce_string_list(item.get("linked_decisions"))
+    if not linked_decisions:
+        linked_decisions = _infer_linked_decisions(task["redacted_spec"], statement)
+
+    return {
+        "id": f"A{index}",
+        "statement": statement,
+        "type": assumption_type,
+        "evidence": evidence,
+        "risk_if_wrong": risk_if_wrong,
+        "needs_confirmation": needs_confirmation,
+        "confidence": round(confidence, 2),
+        "proposed_resolution": proposed_resolution,
+        "linked_decisions": linked_decisions,
+    }
+
+
+def _extract_open_questions(parsed: Any, assumptions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    raw_items = []
+    if isinstance(parsed, dict) and isinstance(parsed.get("open_questions"), list):
+        raw_items = parsed["open_questions"]
+
+    items = []
+    for index, item in enumerate(raw_items, start=1):
+        if not isinstance(item, dict):
+            continue
+        question = _first_text(item, ["question", "prompt"])
+        if not question:
+            continue
+        priority = item.get("priority", "medium")
+        if priority not in ALLOWED_PRIORITIES:
+            priority = "medium"
+        related = _coerce_string_list(item.get("related_assumptions"))
+        items.append(
+            {
+                "id": f"Q{index}",
+                "question": question,
+                "related_assumptions": related or [assumptions[min(index - 1, len(assumptions) - 1)]["id"]],
+                "priority": priority,
+            }
+        )
+    if items:
+        return items[:3]
+
+    derived = []
+    for index, item in enumerate(assumptions[:3], start=1):
+        derived.append(
+            {
+                "id": f"Q{index}",
+                "question": item["proposed_resolution"],
+                "related_assumptions": [item["id"]],
+                "priority": "high" if item["needs_confirmation"] else "medium",
+            }
+        )
+    return derived
+
+
+def _extract_monitor_notes(parsed: Any, assumptions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    raw_items = []
+    if isinstance(parsed, dict) and isinstance(parsed.get("monitor_notes"), list):
+        raw_items = parsed["monitor_notes"]
+
+    items = []
+    for item in raw_items:
+        if not isinstance(item, dict):
+            continue
+        category = item.get("category", "context_gap")
+        if category not in ALLOWED_NOTE_CATEGORIES:
+            category = "context_gap"
+        message = _first_text(item, ["message", "note", "summary"])
+        if not message:
+            continue
+        items.append({"category": category, "message": message})
+    if items:
+        return items[:3]
+
+    return [
+        {
+            "category": "context_gap" if assumptions else "coverage_warning",
+            "message": "The redacted task leaves at least part of the implementation contract implicit and requires review before execution.",
+        }
+    ]
+
+
+def _coerce_string_list(value: Any) -> List[str]:
+    if isinstance(value, list):
+        return [str(item).strip() for item in value if str(item).strip()]
+    if isinstance(value, str) and value.strip():
+        return [value.strip()]
+    return []
+
+
+def _first_text(item: Dict[str, Any], keys: List[str]) -> str:
+    for key in keys:
+        value = item.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return ""
+
+
+def _infer_type(statement: str, evidence: List[str]) -> str:
+    text = " ".join([statement] + evidence).lower()
+    if any(token in text for token in ["responsive", "test", "validate", "viewport", "acceptance"]):
+        return "Validation"
+    if any(token in text for token in ["deploy", "vercel", "environment", "version", "platform"]):
+        return "Environment"
+    if any(token in text for token in ["database", "backend", "storage", "persist", "api", "route"]):
+        return "Implementation"
+    if any(token in text for token in ["performance", "security", "privacy", "accessibility", "seo"]):
+        return "NonFunctional"
+    return "Functional"
+
+
+def _infer_linked_decisions(spec_text: str, statement: str) -> List[str]:
+    text = f"{spec_text} {statement}".lower()
+    linked = []
+    if any(token in text for token in ["backend", "api", "route", "persist", "database"]):
+        linked.append("Backend architecture")
+    if any(token in text for token in ["deploy", "vercel", "platform"]):
+        linked.append("Deployment configuration")
+    if any(token in text for token in ["responsive", "mobile", "desktop", "viewport"]):
+        linked.append("UI validation plan")
+    if any(token in text for token in ["contact", "admin", "auth", "form"]):
+        linked.append("Feature scope")
+    return linked
 
 
 def _infer_assumptions(task: Dict[str, Any]) -> List[Dict[str, Any]]:

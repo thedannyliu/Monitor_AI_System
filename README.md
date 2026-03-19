@@ -16,8 +16,8 @@ The first milestone covers:
 
 ## Fixed Defaults
 
-- Base coder model: `Qwen2.5-Coder-7B-Instruct`
-- Monitor model: `Qwen2.5-Coder-7B-Instruct`
+- Base coder model: `Qwen/Qwen2.5-Coder-7B-Instruct`
+- Monitor model: `Qwen/Qwen2.5-Coder-7B-Instruct`
 - Preferred inference backend: `vLLM`
 - Fallback backend: `transformers`
 - Pilot benchmarks:

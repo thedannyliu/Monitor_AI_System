@@ -16,6 +16,8 @@
 1. `heuristic`
 2. `OpenAI-compatible` serving backend，例如 `vLLM`
 
+對於 OpenAI-compatible backend，系統會先要求模型直接輸出 canonical schema；若模型回傳的是可解析 JSON 但欄位名稱略有偏差，runtime 會做一次 constrained normalization，把 near-miss payload 轉成固定 schema 後再驗證。這是為了降低 7B 級模型的格式漂移對 pilot 的影響，不改變「assumption content 來自模型」這個實驗設定。
+
 ---
 
 ## 2. 設計原則

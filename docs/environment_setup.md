@@ -197,6 +197,16 @@ bash scripts/install_gpu_extras.sh
 bash scripts/start_vllm_server.sh
 ```
 
+When calling the vLLM OpenAI-compatible API, use the full Hugging Face repo ID as the model name:
+
+- `Qwen/Qwen2.5-Coder-7B-Instruct`
+
+Do not use the shortened label:
+
+- `Qwen2.5-Coder-7B-Instruct`
+
+The shortened label returns `404 Not Found` from the running vLLM server because the served model registry is keyed by the full repo ID.
+
 ### Run the heuristic pilot in the Conda env
 
 ```bash
