@@ -6,6 +6,11 @@ CONDA_BIN="/storage/ice1/2/9/eliu354/miniconda3/bin/conda"
 ENV_NAME="${1:-monitor-ai-system}"
 
 echo "Checking benchmark runtime prerequisites for env '$ENV_NAME'..."
+echo "Host: $(hostname)"
+
+DOCKER_BIN="$(command -v docker || true)"
+APPTAINER_BIN="$(command -v apptainer || true)"
+SINGULARITY_BIN="$(command -v singularity || true)"
 
 "$CONDA_BIN" run -n "$ENV_NAME" python - <<'PY'
 import importlib
@@ -16,9 +21,17 @@ if missing:
 print("Python benchmark dependencies are available.")
 PY
 
-if ! command -v docker >/dev/null 2>&1; then
-  echo "Docker CLI is not available on this node."
-  echo "Use a compute node that exposes Docker before running official SWE/FEA evaluation."
+echo "Container runtimes:"
+echo "  docker: ${DOCKER_BIN:-not found}"
+echo "  apptainer: ${APPTAINER_BIN:-not found}"
+echo "  singularity: ${SINGULARITY_BIN:-not found}"
+
+if [[ -z "$DOCKER_BIN" ]]; then
+  echo
+  echo "Conclusion:"
+  echo "  - This node can still run inference, vLLM, monitor generation, and prediction generation."
+  echo "  - This node cannot run the official SWE/FEA Docker evaluation harness as-is."
+  echo "  - If Apptainer/Singularity is available, it may still be useful for other containerized workflows, but not as a drop-in replacement for the official Docker harness."
   exit 2
 fi
 
@@ -42,4 +55,7 @@ if [[ ! -d "$REPO_ROOT/external/FEA-Bench" ]]; then
   exit 5
 fi
 
-echo "Benchmark runtime checks completed successfully."
+echo
+echo "Conclusion:"
+echo "  - This node is suitable for official SWE/FEA benchmark evaluation."
+echo "  - It can also run inference and prediction generation."

@@ -53,6 +53,18 @@ Check external benchmark repos:
 bash scripts/check_external_benchmarks.sh
 ```
 
+Check the current PACE node capabilities:
+
+```bash
+bash scripts/check_pace_node_capabilities.sh
+```
+
+Check whether the current node can run official benchmark evaluation:
+
+```bash
+bash scripts/check_benchmark_runtime.sh
+```
+
 Submit a GPU smoke test:
 
 ```bash
