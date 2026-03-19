@@ -175,6 +175,24 @@ Reason:
 2. login-node setup should stay lighter
 3. FEA-Bench's `vllm` dependency should not be pulled accidentally during core bootstrap
 
+### Benchmark extras
+
+Installed by:
+
+- `bash scripts/install_benchmark_extras.sh`
+
+Currently includes the Python dependencies required by:
+
+- `external/FEA-Bench`
+- `external/SWE-bench`
+- local benchmark helper scripts
+
+Reason:
+
+1. the monitor pipeline does not need the full official benchmark dependency set
+2. official harness preparation should stay opt-in
+3. Docker-backed evaluation is only relevant on nodes that can actually run it
+
 ---
 
 ## 7. Required Commands
@@ -189,6 +207,12 @@ bash scripts/create_or_update_env.sh
 
 ```bash
 bash scripts/install_gpu_extras.sh
+```
+
+### Install official benchmark extras
+
+```bash
+bash scripts/install_benchmark_extras.sh
 ```
 
 ### Start a vLLM server
@@ -228,6 +252,20 @@ All project scripts that interact with Conda should unset inherited `CONDA_*` sh
 Reason:
 
 the PACE login shell may already contain environment variables from a different system Anaconda installation, which can pollute the local project Conda root.
+
+---
+
+## 9. Official Benchmark Runtime
+
+The Python-side benchmark dependencies can be prepared on the login node, but official FEA-Bench / SWE-bench evaluation still requires a node with Docker support.
+
+Use:
+
+```bash
+bash scripts/check_benchmark_runtime.sh
+```
+
+to verify whether the current node is suitable for official benchmark scoring.
 
 This is why the setup scripts explicitly unset:
 

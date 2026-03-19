@@ -84,6 +84,12 @@
 2. 若 queue 壓力大或資源零碎，退回 `transformers + 4-bit quantization`。
 3. 所有正式評測條件必須固定同一種 backend，避免 runtime 差異影響結果。
 
+目前實作補充：
+
+1. OpenAI-compatible monitor runtime 已改成 benchmark-aware hybrid。
+2. heuristic assumptions 先提供 precision-oriented anchors。
+3. LLM 輸出在 schema 驗證前會先做 filtering 與 normalization，避免 7B 模型的 generic assumption 漂移。
+
 ### 2.4 PACE ICE 資源策略
 
 已知可用 GPU 類型：

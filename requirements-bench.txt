@@ -1,0 +1,14 @@
+beautifulsoup4
+chardet<6
+datasets
+docker
+fastcore
+ghapi
+GitPython
+modal
+openai
+python-dotenv
+requests
+tenacity
+tqdm
+unidiff

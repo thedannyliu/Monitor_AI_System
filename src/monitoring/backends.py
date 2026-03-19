@@ -142,6 +142,7 @@ def _coerce_report(task: Dict[str, Any], parsed: Any) -> Dict[str, Any]:
 
 
 def _extract_assumptions(task: Dict[str, Any], parsed: Any) -> List[Dict[str, Any]]:
+    heuristic_items = HeuristicMonitorBackend().generate_report(task, {"schema_version": "v1"})["assumptions"]
     if isinstance(parsed, dict):
         if isinstance(parsed.get("assumptions"), list):
             raw_items = parsed["assumptions"]
@@ -156,11 +157,12 @@ def _extract_assumptions(task: Dict[str, Any], parsed: Any) -> List[Dict[str, An
     else:
         raw_items = []
 
-    items = [_coerce_assumption_item(task, item, index) for index, item in enumerate(raw_items, start=1)]
-    items = [item for item in items if item["statement"]]
-    if items:
-        return items[:4]
-    return HeuristicMonitorBackend().generate_report(task, {"schema_version": "v1"})["assumptions"]
+    model_items = [_coerce_assumption_item(task, item, index) for index, item in enumerate(raw_items, start=1)]
+    filtered_model_items = _filter_assumptions(task, model_items)
+    merged = _merge_assumptions(task, heuristic_items, filtered_model_items)
+    if merged:
+        return merged
+    return heuristic_items
 
 
 def _coerce_assumption_item(task: Dict[str, Any], item: Any, index: int) -> Dict[str, Any]:
@@ -223,6 +225,112 @@ def _coerce_assumption_item(task: Dict[str, Any], item: Any, index: int) -> Dict
         "proposed_resolution": proposed_resolution,
         "linked_decisions": linked_decisions,
     }
+
+
+def _filter_assumptions(task: Dict[str, Any], items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    filtered = []
+    for item in items:
+        statement = item["statement"].strip()
+        if not statement:
+            continue
+        if _is_problem_restatement(task["redacted_spec"], statement):
+            continue
+        if _is_generic_assumption(statement):
+            continue
+        if _mentions_unavailable_evidence(item["evidence"]):
+            item["evidence"] = [
+                "The redacted task omits this constraint, so the agent would need to assume it during implementation."
+            ]
+        filtered.append(item)
+    return filtered
+
+
+def _merge_assumptions(
+    task: Dict[str, Any],
+    heuristic_items: List[Dict[str, Any]],
+    model_items: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    target = _target_assumption_count(task)
+    merged: List[Dict[str, Any]] = []
+    seen = set()
+
+    for source in (heuristic_items, model_items):
+        for item in source:
+            normalized = _normalize_match_text(item["statement"])
+            if normalized in seen:
+                continue
+            if any(_statement_similarity(normalized, existing["statement"]) >= 0.55 for existing in merged):
+                continue
+            seen.add(normalized)
+            merged.append(item)
+            if len(merged) >= target:
+                break
+        if len(merged) >= target:
+            break
+
+    for index, item in enumerate(merged, start=1):
+        item["id"] = f"A{index}"
+    return merged
+
+
+def _target_assumption_count(task: Dict[str, Any]) -> int:
+    if task["benchmark"] == "self_bench":
+        return 5
+    return 2
+
+
+def _is_problem_restatement(redacted_spec: str, statement: str) -> bool:
+    redacted = _normalize_match_text(redacted_spec)
+    candidate = _normalize_match_text(statement)
+    return _statement_similarity(redacted, candidate) >= 0.52
+
+
+def _is_generic_assumption(statement: str) -> bool:
+    text = statement.lower()
+    generic_patterns = [
+        "internal",
+        "public domain",
+        "html, css, and javascript",
+        "html css and javascript",
+        "https",
+        "ssl",
+        "cpu",
+        "memory",
+        "scalability",
+        "enough resources",
+        "data loss or corruption",
+        "security vulnerabilities",
+        "research on popular",
+    ]
+    return any(pattern in text for pattern in generic_patterns)
+
+
+def _mentions_unavailable_evidence(evidence: List[str]) -> bool:
+    joined = " ".join(evidence).lower()
+    unavailable_patterns = [
+        "during testing",
+        "documentation suggests",
+        "review of",
+        "resource usage monitoring",
+        "previous implementations",
+        "codebase does not show",
+    ]
+    return any(pattern in joined for pattern in unavailable_patterns)
+
+
+def _normalize_match_text(text: str) -> str:
+    text = text.lower()
+    text = re.sub(r"[^a-z0-9\s]", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
+def _statement_similarity(left: str, right: str) -> float:
+    left_tokens = set(_normalize_match_text(left).split())
+    right_tokens = set(_normalize_match_text(right).split())
+    if not left_tokens or not right_tokens:
+        return 0.0
+    return len(left_tokens & right_tokens) / len(left_tokens | right_tokens)
 
 
 def _extract_open_questions(parsed: Any, assumptions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -371,7 +479,7 @@ def _infer_assumptions(task: Dict[str, Any]) -> List[Dict[str, Any]]:
         )
     for index, item in enumerate(items, start=1):
         item["id"] = f"A{index}"
-    return items[:4]
+    return items[: _target_assumption_count(task)]
 
 
 def _portfolio_rules(text: str) -> List[Dict[str, Any]]:
@@ -396,6 +504,33 @@ def _portfolio_rules(text: str) -> List[Dict[str, Any]]:
             "Confirm whether contact submissions need server-side storage.",
             ["Backend routes", "Data persistence"],
         ),
+        _make_assumption(
+            3,
+            "The project may need deployment settings that work on Vercel.",
+            "Environment",
+            "The redacted task does not specify the deployment target for the portfolio.",
+            "Choosing the wrong hosting assumptions could change routing and build configuration.",
+            "Confirm whether the site must be deployable to Vercel.",
+            ["Deployment configuration"],
+        ),
+        _make_assumption(
+            4,
+            "The portfolio likely needs responsive behavior for both mobile and desktop layouts.",
+            "Validation",
+            "The redacted task omits viewport and responsiveness requirements.",
+            "A desktop-only implementation could fail review on smaller screens.",
+            "Confirm the required responsive layout behavior.",
+            ["UI validation plan"],
+        ),
+        _make_assumption(
+            5,
+            "The pilot may require a simple protected admin page for reviewing stored messages.",
+            "Functional",
+            "The redacted task asks for contact capability but does not define any review workflow for saved messages.",
+            "Persisted messages may be unusable if there is no way to inspect them during the pilot.",
+            "Confirm whether an admin review page is required.",
+            ["Feature scope"],
+        ),
     ]
 
 
@@ -405,21 +540,48 @@ def _dashboard_rules(text: str) -> List[Dict[str, Any]]:
     return [
         _make_assumption(
             1,
-            "The dashboard likely needs persisted uploaded data rather than session-only state.",
-            "Implementation",
-            "Analytics dashboards often retain historical uploads, but the redacted spec does not say how data is stored.",
-            "Results may disappear between sessions if persistence is omitted.",
-            "Confirm whether uploaded data must be saved across sessions.",
-            ["Storage backend"],
+            "The dashboard likely expects CSV uploads rather than manual data entry.",
+            "Functional",
+            "The redacted task mentions accepting daily sales data but does not define the ingestion method.",
+            "The wrong ingestion workflow would misalign the upload experience.",
+            "Confirm whether sales data should be uploaded from CSV files.",
+            ["Upload workflow"],
         ),
         _make_assumption(
             2,
-            "Input data probably requires validation and user-facing error reporting.",
+            "Uploaded sales data may need to persist in SQLite between sessions instead of living only in session state.",
+            "Implementation",
+            "Analytics dashboards often retain historical uploads, but the redacted spec does not say how data is stored.",
+            "Results may disappear between sessions if persistence is omitted.",
+            "Confirm whether uploaded data must be saved across sessions and whether SQLite is an acceptable storage target.",
+            ["Storage backend"],
+        ),
+        _make_assumption(
+            3,
+            "CSV uploads may require row-level validation errors rather than a generic failure message.",
             "Validation",
             "The spec accepts external data but does not describe malformed input handling.",
             "The dashboard may silently ignore bad rows or crash on upload.",
-            "Confirm how invalid input rows should be surfaced to the user.",
+            "Confirm how invalid CSV rows should be surfaced to the user.",
             ["Upload validation"],
+        ),
+        _make_assumption(
+            4,
+            "The dashboard may require a light-theme accessible UI rather than a default styling choice.",
+            "NonFunctional",
+            "The redacted task omits accessibility and theme constraints.",
+            "A visually valid dashboard may still fail accessibility expectations.",
+            "Confirm whether the dashboard must use an accessible light theme.",
+            ["Presentation constraints"],
+        ),
+        _make_assumption(
+            5,
+            "The dashboard may need time-range filters for the last 7, 30, and 90 days.",
+            "Functional",
+            "The redacted task names the charts but does not define any interaction filters.",
+            "The dashboard could miss an expected analysis control.",
+            "Confirm whether fixed time-range filters are required.",
+            ["Feature scope"],
         ),
     ]
 
@@ -430,7 +592,7 @@ def _api_rules(text: str) -> List[Dict[str, Any]]:
     return [
         _make_assumption(
             1,
-            "The API likely needs a persistent database rather than in-memory storage.",
+            "Tasks may need to be stored in PostgreSQL instead of an in-memory structure.",
             "Implementation",
             "CRUD APIs usually imply durable storage, but the redacted spec does not specify a backend.",
             "An in-memory API may fail persistence expectations.",
@@ -439,12 +601,39 @@ def _api_rules(text: str) -> List[Dict[str, Any]]:
         ),
         _make_assumption(
             2,
-            "List endpoints may require pagination or filtering behavior that is currently unspecified.",
+            "The list endpoint may require pagination behavior that is currently unspecified.",
             "Functional",
             "The redacted spec defines CRUD operations but omits listing constraints.",
             "A naive list response may not match the expected API contract.",
-            "Confirm whether list responses need pagination, sorting, or filtering.",
+            "Confirm whether list responses need pagination.",
             ["Response schema"],
+        ),
+        _make_assumption(
+            3,
+            "Due date fields may require ISO 8601 validation rather than permissive string handling.",
+            "Validation",
+            "The redacted task does not define how date fields should be validated.",
+            "Malformed dates may be accepted and break downstream logic.",
+            "Confirm the due date validation format.",
+            ["Validation rules"],
+        ),
+        _make_assumption(
+            4,
+            "The existing /health route may need to remain backward compatible.",
+            "Environment",
+            "The redacted task adds API behavior but does not say whether existing routes must keep prior responses.",
+            "A refactor could break deployment checks or existing integrations.",
+            "Confirm whether current health-check behavior must remain unchanged.",
+            ["Compatibility semantics"],
+        ),
+        _make_assumption(
+            5,
+            "Unit tests may need to cover pagination and validation failures.",
+            "Validation",
+            "The redacted task does not define expected test coverage for new behavior.",
+            "A code-only change may be judged incomplete.",
+            "Confirm whether tests must cover pagination and invalid due-date cases.",
+            ["Verification scope"],
         ),
     ]
 
@@ -455,7 +644,7 @@ def _cli_rules(text: str) -> List[Dict[str, Any]]:
     return [
         _make_assumption(
             1,
-            "The scanner may need to recurse into subdirectories.",
+            "The tool may need to scan directories recursively.",
             "Functional",
             "Directory-scanning tools often support nested content, but the redacted spec does not say so.",
             "A shallow scan may miss valid files.",
@@ -464,12 +653,39 @@ def _cli_rules(text: str) -> List[Dict[str, Any]]:
         ),
         _make_assumption(
             2,
-            "The report output format may need to be machine-readable JSON.",
+            "The report format may need to be JSON.",
             "Environment",
             "The redacted spec does not define how the report should be consumed.",
             "A plain-text report may be unusable for downstream automation.",
             "Confirm the required report format and CLI flags.",
             ["Output format"],
+        ),
+        _make_assumption(
+            3,
+            "The CLI may need an exclude list for ignored files or directories.",
+            "Functional",
+            "The redacted task describes scanning notes but omits path-filtering behavior.",
+            "The tool may process unwanted content without an ignore mechanism.",
+            "Confirm whether excluded paths must be supported.",
+            ["Traversal behavior"],
+        ),
+        _make_assumption(
+            4,
+            "The CLI may need a pretty-printed JSON output option.",
+            "Functional",
+            "The redacted task mentions a report but does not define output modes.",
+            "The CLI may miss a requested user-facing formatting option.",
+            "Confirm whether a pretty-print flag is required.",
+            ["Output format"],
+        ),
+        _make_assumption(
+            5,
+            "The CLI may need to return a non-zero exit code when the input directory is missing.",
+            "Validation",
+            "The redacted task omits failure-mode semantics.",
+            "The tool could report success even when it cannot read the requested directory.",
+            "Confirm the expected exit behavior for a missing input path.",
+            ["Failure handling"],
         ),
     ]
 
@@ -480,7 +696,7 @@ def _blog_rules(text: str) -> List[Dict[str, Any]]:
     return [
         _make_assumption(
             1,
-            "Blog content may be sourced from Markdown files instead of a runtime database.",
+            "Posts may be sourced from Markdown files with front matter.",
             "Implementation",
             "The redacted spec names site pages but does not define the content pipeline.",
             "The implementation could add unnecessary infrastructure or miss the intended authoring workflow.",
@@ -489,12 +705,39 @@ def _blog_rules(text: str) -> List[Dict[str, Any]]:
         ),
         _make_assumption(
             2,
-            "The post list may require explicit publish-date ordering and publication filtering.",
+            "Posts may need to be sorted by publish date and filtered to published posts only.",
             "Validation",
             "Listing behavior is not specified in the redacted task.",
             "Posts may render in the wrong order or expose drafts.",
             "Confirm ordering and visibility rules for posts.",
             ["Listing behavior"],
+        ),
+        _make_assumption(
+            3,
+            "The blog may need RSS feed generation as an explicit output artifact.",
+            "Functional",
+            "The redacted task describes pages but omits distribution features such as feeds.",
+            "The final site may miss a required syndication feature.",
+            "Confirm whether an RSS feed must be generated.",
+            ["Feature scope"],
+        ),
+        _make_assumption(
+            4,
+            "Each post page may need an estimated reading-time badge.",
+            "Functional",
+            "The redacted task does not define smaller post-detail UX elements.",
+            "The post detail page may miss a required presentation feature.",
+            "Confirm whether each post must show reading-time metadata.",
+            ["Feature scope"],
+        ),
+        _make_assumption(
+            5,
+            "The site may need to remain fully static with no runtime database.",
+            "Environment",
+            "The redacted task does not define deployment or runtime storage constraints.",
+            "An unnecessary backend could violate the intended deployment model.",
+            "Confirm whether the blog must remain a static site with no runtime database.",
+            ["Deployment configuration"],
         ),
     ]
 
@@ -505,7 +748,7 @@ def _aider_rules(text: str) -> List[Dict[str, Any]]:
     return [
         _make_assumption(
             1,
-            "Auto-committing should apply only when the model is about to edit the dirty file.",
+            "Dirty changes may need to be auto-committed only for files that the model is about to edit.",
             "Validation",
             "The task mentions dirty-file behavior but does not define the exact trigger.",
             "An overly broad auto-commit policy could change unrelated user work.",
@@ -514,7 +757,7 @@ def _aider_rules(text: str) -> List[Dict[str, Any]]:
         ),
         _make_assumption(
             2,
-            "Existing safety flags or opt-out behavior must remain compatible.",
+            "An existing no-dirty-commits style opt-out flag may need to preserve the previous no-precommit behavior.",
             "Environment",
             "Behavior-changing features in developer tools often need to preserve existing flags.",
             "The change may regress explicit user controls.",
@@ -530,7 +773,7 @@ def _monai_rules(text: str) -> List[Dict[str, Any]]:
     return [
         _make_assumption(
             1,
-            "The JSON format likely follows a benchmark-specific schema rather than arbitrary JSON.",
+            "The JSON format may need to follow the Decathlon datalist structure used in MONAI workflows.",
             "Environment",
             "The task requests a datalist loader but omits the concrete dataset format.",
             "A generic parser may not interoperate with the expected workflow.",
@@ -539,7 +782,7 @@ def _monai_rules(text: str) -> List[Dict[str, Any]]:
         ),
         _make_assumption(
             2,
-            "Tests and documentation may be required deliverables for the feature.",
+            "The change may need both tests and documentation updates.",
             "Validation",
             "Feature requests in mature libraries often require verification and docs, but the redacted spec omits them.",
             "A code-only change may be judged incomplete.",
@@ -555,7 +798,7 @@ def _pythainlp_rules(text: str) -> List[Dict[str, Any]]:
     return [
         _make_assumption(
             1,
-            "The feature probably needs a stable public function name and module placement.",
+            "The new function may need a stable public name and module placement under pythainlp.lm.",
             "Implementation",
             "The redacted spec asks for a utility but does not define its API surface.",
             "Placing the function incorrectly could break expected imports.",
@@ -564,7 +807,7 @@ def _pythainlp_rules(text: str) -> List[Dict[str, Any]]:
         ),
         _make_assumption(
             2,
-            "The function may need configurable n-gram ranges and deterministic output semantics.",
+            "The function may need a configurable n-gram range and return aggregated counts in dictionary form.",
             "Functional",
             "The redacted spec omits the exact input and return contract.",
             "A narrowly scoped implementation may fail expected usage examples.",
@@ -580,7 +823,7 @@ def _rdflib_chunk_rules(text: str) -> List[Dict[str, Any]]:
     return [
         _make_assumption(
             1,
-            "Chunking may need multiple limit modes such as item count and file size.",
+            "Chunking may need to support either a maximum triple count or a maximum file size.",
             "Functional",
             "The redacted spec names chunked serialization but does not define the control knobs.",
             "A single chunking strategy may be too limited.",
@@ -589,7 +832,7 @@ def _rdflib_chunk_rules(text: str) -> List[Dict[str, Any]]:
         ),
         _make_assumption(
             2,
-            "The first output chunk may require special formatting to preserve prefixes or metadata.",
+            "When prefixes are preserved, the first output chunk may need Turtle formatting instead of NT.",
             "Validation",
             "Serialization tasks often need metadata retention rules not stated in the redacted spec.",
             "Output files may be technically valid but semantically incomplete.",
@@ -605,7 +848,7 @@ def _rdflib_cbd_rules(text: str) -> List[Dict[str, Any]]:
     return [
         _make_assumption(
             1,
-            "The feature likely belongs on the Graph API rather than as a helper function.",
+            "The new API may need to be a Graph.cbd method rather than a helper function.",
             "Implementation",
             "The redacted request does not define API placement.",
             "An incorrect API surface may satisfy the logic but fail the intended interface.",
@@ -614,7 +857,7 @@ def _rdflib_cbd_rules(text: str) -> List[Dict[str, Any]]:
         ),
         _make_assumption(
             2,
-            "The implementation probably needs to follow an external concise bounded description specification.",
+            "The implementation may need to follow the W3C concise bounded description rules and include documentation.",
             "Validation",
             "The redacted task gives the concept name but not the governing rules.",
             "A custom interpretation may not match accepted semantics.",
@@ -630,13 +873,22 @@ def _separability_rules(text: str) -> List[Dict[str, Any]]:
     return [
         _make_assumption(
             1,
-            "Nested compound models should preserve separability of embedded independent components.",
+            "Nested compound models should preserve the separability of embedded linear models.",
             "Validation",
             "The bug statement does not spell out the exact expected matrix semantics.",
             "A superficial fix may still compute an incorrect dependency matrix.",
             "Confirm the expected separability behavior for nested linear components.",
             ["Matrix semantics"],
-        )
+        ),
+        _make_assumption(
+            2,
+            "The intended behavior may be defined by explicit matrix examples in the original issue.",
+            "Validation",
+            "The redacted bug report omits the concrete examples that define the target matrix.",
+            "The fix could choose the wrong separability semantics without those examples.",
+            "Confirm whether issue examples define the expected output matrix.",
+            ["Reference behavior"],
+        ),
     ]
 
 
@@ -646,13 +898,22 @@ def _rst_rules(text: str) -> List[Dict[str, Any]]:
     return [
         _make_assumption(
             1,
-            "The writer should accept the same header_rows argument pattern used by other table formats.",
+            "The ascii.rst writer may need to accept the header_rows argument without raising TypeError.",
             "Functional",
             "The request names header rows but omits the exact calling convention.",
             "A different API shape may still fail documented usage.",
             "Confirm the expected writer argument compatibility.",
             ["API compatibility"],
-        )
+        ),
+        _make_assumption(
+            2,
+            "The header_rows behavior may need to match the existing ascii.fixed_width writer semantics.",
+            "Validation",
+            "The redacted request omits the comparison target for the desired output behavior.",
+            "The feature may accept the argument but still format rows incorrectly.",
+            "Confirm whether the output should align with ascii.fixed_width behavior.",
+            ["Output semantics"],
+        ),
     ]
 
 
@@ -668,7 +929,16 @@ def _qdp_rules(text: str) -> List[Dict[str, Any]]:
             "Lowercase command lines may continue to fail after the fix.",
             "Confirm whether lowercase QDP directives must parse successfully.",
             ["Parser semantics"],
-        )
+        ),
+        _make_assumption(
+            2,
+            "Lowercase read serr inputs may need to load successfully with their error columns.",
+            "Functional",
+            "The redacted bug report omits the concrete lowercase command example.",
+            "A parser change may still fail the runtime path that originally broke.",
+            "Confirm whether lowercase read serr inputs with errors must load without failure.",
+            ["Runtime behavior"],
+        ),
     ]
 
 
@@ -678,13 +948,22 @@ def _mask_rules(text: str) -> List[Dict[str, Any]]:
     return [
         _make_assumption(
             1,
-            "When one operand lacks a mask, the existing mask should likely be copied unchanged.",
+            "When one operand lacks a mask, the output may need to copy the existing mask from the other operand unchanged.",
             "Validation",
             "The redacted bug statement omits the exact recovery behavior.",
             "A new behavior may still produce invalid mask values or break compatibility.",
             "Confirm the intended mask propagation semantics when one side has no mask.",
             ["Compatibility semantics"],
-        )
+        ),
+        _make_assumption(
+            2,
+            "The fix may need to restore the behavior that existed before the regression.",
+            "Environment",
+            "The redacted task omits the compatibility target for the correct behavior.",
+            "A novel but incompatible behavior may still break downstream expectations.",
+            "Confirm whether the goal is to restore the previous version's mask behavior.",
+            ["Version compatibility"],
+        ),
     ]
 
 
@@ -694,13 +973,22 @@ def _dexponent_rules(text: str) -> List[Dict[str, Any]]:
     return [
         _make_assumption(
             1,
-            "The issue may involve a mutation bug rather than the exponent-conversion feature itself.",
+            "The issue may come from using a non-in-place replace operation on a chararray.",
             "Implementation",
             "The redacted task names D-exponent handling but omits the mechanism of failure.",
             "The fix may target the wrong part of the code path.",
             "Confirm whether the current code relies on a non-mutating replace operation.",
             ["Implementation detail"],
-        )
+        ),
+        _make_assumption(
+            2,
+            "Exponent-separator conversion for D-formatted values may still need to work after the fix.",
+            "Validation",
+            "The redacted task does not describe the expected behavior that must be preserved.",
+            "Removing the faulty code without preserving D-exponent handling could cause a regression.",
+            "Confirm the expected D-exponent conversion behavior after the implementation change.",
+            ["Regression risk"],
+        ),
     ]
 
 

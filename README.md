@@ -20,6 +20,9 @@ The first milestone covers:
 - Monitor model: `Qwen/Qwen2.5-Coder-7B-Instruct`
 - Preferred inference backend: `vLLM`
 - Fallback backend: `transformers`
+- Core env setup: `bash scripts/create_or_update_env.sh`
+- Benchmark extras: `bash scripts/install_benchmark_extras.sh`
+- Real benchmark runbook: [docs/real_benchmark_runbook.md](/storage/ice1/2/9/eliu354/Projects/Monitor_AI_Sys/docs/real_benchmark_runbook.md)
 - Pilot benchmarks:
   - self benchmark: 5 tasks
   - FEA-Bench Lite curated pilot: 5 tasks
