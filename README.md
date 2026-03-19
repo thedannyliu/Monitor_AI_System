@@ -36,17 +36,12 @@ The first milestone covers:
 
 ## Quick Start
 
-The login node Python in the current environment is unstable, so the project defaults to `/usr/bin/python3`.
+The project now uses a dedicated Conda environment named `monitor-ai-system` with Python 3.12.
 
-Local smoke test:
+Create or update the Conda environment:
 
 ```bash
-/usr/bin/python3 scripts/run_pilot.py \
-  --self-manifest data/self_bench/pilot/manifest.json \
-  --fea-manifest data/fea_bench/curated/pilot_manifest.json \
-  --swe-manifest data/swe_bench/curated/pilot_manifest.json \
-  --output-dir results/pilot/local_smoke \
-  --backend heuristic
+bash scripts/create_or_update_env.sh
 ```
 
 Check external benchmark repos:
@@ -61,6 +56,24 @@ Submit a GPU smoke test:
 sbatch slurm/gpu_smoke_test.sbatch
 ```
 
+Install GPU extras and start a vLLM server on a compute node:
+
+```bash
+sbatch slurm/start_vllm_server.sbatch
+```
+
+Run the monitor pilot against an OpenAI-compatible endpoint:
+
+```bash
+sbatch slurm/run_openai_monitor_pilot.sbatch
+```
+
+Run the execution pilot against the same endpoint after monitor outputs exist:
+
+```bash
+sbatch slurm/run_execution_pilot.sbatch
+```
+
 Submit the pilot runner:
 
 ```bash
@@ -69,6 +82,8 @@ sbatch slurm/run_monitor_pilot.sbatch
 
 ## Notes
 
+- No project-specific Python packages were previously installed into the broken `miniconda3` base while this repo was being bootstrapped. The earlier work used `/usr/bin/python3`, `git`, and shell tooling.
+- The `miniconda3` root was repaired in place to preserve existing Conda prefixes. Existing external envs at `/storage/ice1/2/9/eliu354/conda_envs/*` were not moved or rewritten.
 - `external/FEA-Bench` and `external/SWE-bench` are local clones for environment checks and should not be committed.
 - Official FEA-Bench dataset construction still requires a GitHub token.
 - Official SWE-bench evaluation still requires the full harness dependencies and container runtime on compute nodes.

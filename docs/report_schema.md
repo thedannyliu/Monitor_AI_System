@@ -11,6 +11,11 @@
 
 第一版正式實驗中，monitor 必須輸出合法 JSON。若輸出無法解析，視為格式失敗，需重跑。
 
+目前 schema 已接上兩種 backend：
+
+1. `heuristic`
+2. `OpenAI-compatible` serving backend，例如 `vLLM`
+
 ---
 
 ## 2. 設計原則

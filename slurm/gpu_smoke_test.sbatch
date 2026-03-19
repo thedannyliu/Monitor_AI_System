@@ -16,9 +16,9 @@ echo "Date: $(date)"
 echo "CUDA devices:"
 nvidia-smi
 echo "Python:"
-/usr/bin/python3 --version
+/storage/ice1/2/9/eliu354/miniconda3/bin/conda run -n monitor-ai-system python --version
 
-/usr/bin/python3 scripts/run_pilot.py \
+/storage/ice1/2/9/eliu354/miniconda3/bin/conda run -n monitor-ai-system python scripts/run_pilot.py \
   --self-manifest data/self_bench/pilot/manifest.json \
   --fea-manifest data/fea_bench/curated/pilot_manifest.json \
   --swe-manifest data/swe_bench/curated/pilot_manifest.json \

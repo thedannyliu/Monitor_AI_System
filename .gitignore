@@ -8,3 +8,4 @@ feabench-data/
 *.log
 *.out
 *.err
+src/*.egg-info/

@@ -65,6 +65,19 @@
 - 優先：`vLLM`
 - 備用：`transformers + bitsandbytes`
 
+環境管理固定如下：
+
+- base conda root: `/storage/ice1/2/9/eliu354/miniconda3`
+- project env: `monitor-ai-system`
+- Python: `3.12`
+
+原則：
+
+1. `base` 只保留 conda 本體與最小修復套件，不安裝 GPU 推論套件。
+2. 專案依賴安裝到 `monitor-ai-system`。
+3. `vLLM` 這類 GPU 相關依賴只安裝到專案 env，不裝到 base。
+4. 既有外部 env 保持原路徑，不搬移、不重寫 prefix。
+
 建議策略：
 
 1. 有穩定 GPU 時，使用 `vLLM` 單卡推論。
