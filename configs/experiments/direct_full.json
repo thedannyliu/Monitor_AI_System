@@ -1,0 +1,7 @@
+{
+  "name": "direct_full",
+  "condition": "Direct on Full",
+  "spec_variant": "full",
+  "use_monitor": false,
+  "use_oracle_review": false
+}

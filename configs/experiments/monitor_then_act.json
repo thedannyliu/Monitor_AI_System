@@ -1,0 +1,7 @@
+{
+  "name": "monitor_then_act",
+  "condition": "Monitor-then-Act on Redacted",
+  "spec_variant": "redacted",
+  "use_monitor": true,
+  "use_oracle_review": true
+}

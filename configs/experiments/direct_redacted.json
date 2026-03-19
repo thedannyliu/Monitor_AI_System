@@ -1,0 +1,7 @@
+{
+  "name": "direct_redacted",
+  "condition": "Direct on Redacted",
+  "spec_variant": "redacted",
+  "use_monitor": false,
+  "use_oracle_review": false
+}

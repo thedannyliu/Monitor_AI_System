@@ -1,0 +1,60 @@
+{
+  "task_id": "self-cli-001",
+  "benchmark": "self_bench",
+  "domain": "cli_tool",
+  "starter_repo": "starter_repos/cli_basic",
+  "full_spec": "Build a CLI tool that scans a directory of Markdown notes and generates a tag summary report. The tool must support recursive scanning, write the report as JSON, and ignore files inside a configurable exclude list. Add a --pretty flag for human-readable JSON output and return a non-zero exit code when the input directory does not exist.",
+  "redacted_spec": "Build a CLI tool that scans a directory of Markdown notes and generates a tag summary report.",
+  "gold_assumptions": [
+    {
+      "id": "A1",
+      "statement": "The tool must scan directories recursively.",
+      "type": "Functional",
+      "source_span": "full_spec sentence 1",
+      "impact": "A shallow scan would miss nested note files.",
+      "required_for_success": true
+    },
+    {
+      "id": "A2",
+      "statement": "The report format must be JSON.",
+      "type": "Environment",
+      "source_span": "full_spec sentence 1",
+      "impact": "A plain-text summary would fail downstream automation expectations.",
+      "required_for_success": true
+    },
+    {
+      "id": "A3",
+      "statement": "The tool must support an exclude list for ignored files or directories.",
+      "type": "Functional",
+      "source_span": "full_spec sentence 2",
+      "impact": "The scanner may process unwanted directories without this feature.",
+      "required_for_success": false
+    },
+    {
+      "id": "A4",
+      "statement": "The CLI must provide a pretty-printed JSON option.",
+      "type": "Functional",
+      "source_span": "full_spec sentence 2",
+      "impact": "The CLI would miss an explicit output-mode requirement.",
+      "required_for_success": false
+    },
+    {
+      "id": "A5",
+      "statement": "The CLI must return a non-zero exit code when the input directory is missing.",
+      "type": "Validation",
+      "source_span": "full_spec sentence 2",
+      "impact": "The tool may fail silently or return a misleading success status.",
+      "required_for_success": false
+    }
+  ],
+  "redaction_rationale": [
+    "Removed traversal, output-format, and failure-mode details to create hidden scope assumptions."
+  ],
+  "acceptance_tests": [
+    "Recursive Markdown scanning works.",
+    "Output is valid JSON.",
+    "Excluded paths are skipped.",
+    "Pretty output is available.",
+    "The CLI exits non-zero on a missing input directory."
+  ]
+}

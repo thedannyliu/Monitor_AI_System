@@ -1,0 +1,62 @@
+{
+  "task_id": "self-dashboard-001",
+  "benchmark": "self_bench",
+  "domain": "dashboard",
+  "starter_repo": "starter_repos/dashboard_basic",
+  "full_spec": "Build a lightweight analytics dashboard for a small online shop. The dashboard should ingest daily sales data from a CSV upload, persist uploads in SQLite, and display revenue by day and top products. Add CSV validation with row-level error messages and preserve previously uploaded data between sessions. Include a dark-on-light accessible theme and a filter for the last 7, 30, and 90 days.",
+  "redacted_spec": "Build a lightweight analytics dashboard for a small online shop. The dashboard should accept daily sales data and display revenue by day and top products.",
+  "gold_assumptions": [
+    {
+      "id": "A1",
+      "statement": "Daily sales data is uploaded from CSV files rather than entered manually.",
+      "type": "Functional",
+      "source_span": "full_spec sentence 2",
+      "impact": "The ingestion workflow differs if manual entry or API import is assumed.",
+      "required_for_success": true
+    },
+    {
+      "id": "A2",
+      "statement": "Uploaded data must be persisted in SQLite between sessions.",
+      "type": "Implementation",
+      "source_span": "full_spec sentence 2",
+      "impact": "A session-only dashboard would fail persistence requirements.",
+      "required_for_success": true
+    },
+    {
+      "id": "A3",
+      "statement": "CSV uploads require row-level validation errors.",
+      "type": "Validation",
+      "source_span": "full_spec sentence 3",
+      "impact": "The upload UX is incomplete if malformed rows are not surfaced to the user.",
+      "required_for_success": false
+    },
+    {
+      "id": "A4",
+      "statement": "The dashboard must provide accessible light-theme styling.",
+      "type": "NonFunctional",
+      "source_span": "full_spec sentence 4",
+      "impact": "A default unreviewed theme may violate accessibility expectations.",
+      "required_for_success": false
+    },
+    {
+      "id": "A5",
+      "statement": "Time-range filters for 7, 30, and 90 days are required.",
+      "type": "Functional",
+      "source_span": "full_spec sentence 4",
+      "impact": "The dashboard would miss an explicit interaction requirement.",
+      "required_for_success": false
+    }
+  ],
+  "redaction_rationale": [
+    "Removed data ingestion modality and persistence target to create implementation ambiguity.",
+    "Removed validation details to create hidden acceptance assumptions.",
+    "Removed UX constraints to create non-functional and scope assumptions."
+  ],
+  "acceptance_tests": [
+    "CSV uploads are accepted and validated.",
+    "Uploaded records persist across restarts.",
+    "Revenue-by-day and top-products charts render correctly.",
+    "Time filters change the displayed aggregation.",
+    "The UI uses accessible contrast on a light background."
+  ]
+}

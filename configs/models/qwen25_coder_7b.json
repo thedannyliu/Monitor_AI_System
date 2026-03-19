@@ -1,0 +1,12 @@
+{
+  "model_name": "Qwen2.5-Coder-7B-Instruct",
+  "monitor_model_name": "Qwen2.5-Coder-7B-Instruct",
+  "preferred_backend": "vllm",
+  "fallback_backend": "transformers",
+  "max_context_tokens": 131072,
+  "max_new_tokens": 4096,
+  "temperature": 0.0,
+  "top_p": 1.0,
+  "seed": 17,
+  "notes": "Single-GPU friendly default for PACE ICE pilot runs."
+}

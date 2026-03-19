@@ -1,0 +1,60 @@
+{
+  "task_id": "self-blog-001",
+  "benchmark": "self_bench",
+  "domain": "content_site",
+  "starter_repo": "starter_repos/blog_basic",
+  "full_spec": "Create a simple blog system with a landing page, post listing page, and post detail page. Posts should be loaded from Markdown files with front matter, sorted by publish date, and filtered to published posts only. Add RSS feed generation and an estimated reading-time badge on each post page. The site must build as a static site with no runtime database.",
+  "redacted_spec": "Create a simple blog system with a landing page, post listing page, and post detail page.",
+  "gold_assumptions": [
+    {
+      "id": "A1",
+      "statement": "Posts are sourced from Markdown files with front matter.",
+      "type": "Implementation",
+      "source_span": "full_spec sentence 2",
+      "impact": "A database-backed or hardcoded implementation would diverge from the intended content workflow.",
+      "required_for_success": true
+    },
+    {
+      "id": "A2",
+      "statement": "Posts must be sorted by publish date and filtered to published posts only.",
+      "type": "Validation",
+      "source_span": "full_spec sentence 2",
+      "impact": "Ordering and visibility rules affect correctness of the listing page.",
+      "required_for_success": true
+    },
+    {
+      "id": "A3",
+      "statement": "The system must generate an RSS feed.",
+      "type": "Functional",
+      "source_span": "full_spec sentence 3",
+      "impact": "The blog would miss a required distribution feature.",
+      "required_for_success": false
+    },
+    {
+      "id": "A4",
+      "statement": "Each post page must show an estimated reading-time badge.",
+      "type": "Functional",
+      "source_span": "full_spec sentence 3",
+      "impact": "The post detail page would miss a specified UX element.",
+      "required_for_success": false
+    },
+    {
+      "id": "A5",
+      "statement": "The site must remain fully static and avoid any runtime database.",
+      "type": "Environment",
+      "source_span": "full_spec sentence 4",
+      "impact": "An unnecessary backend would violate deployment constraints.",
+      "required_for_success": false
+    }
+  ],
+  "redaction_rationale": [
+    "Removed content-source, ordering, feed generation, and deployment constraints to create multiple assumption categories."
+  ],
+  "acceptance_tests": [
+    "Blog pages render from Markdown content.",
+    "Only published posts are listed in publish-date order.",
+    "RSS feed output exists.",
+    "Reading-time badge is shown on post pages.",
+    "No runtime database dependency exists."
+  ]
+}

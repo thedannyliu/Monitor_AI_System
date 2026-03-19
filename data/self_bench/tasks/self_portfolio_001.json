@@ -1,0 +1,62 @@
+{
+  "task_id": "self-portfolio-001",
+  "benchmark": "self_bench",
+  "domain": "portfolio",
+  "starter_repo": "starter_repos/portfolio_basic",
+  "full_spec": "Build a personal portfolio website with a homepage, projects section, about section, and a contact form. The contact form must submit to a backend endpoint and persist messages for later review. The site must be deployable to Vercel and must be responsive on mobile and desktop. Add a lightweight admin page protected by a hardcoded local password so the owner can review saved messages during the pilot.",
+  "redacted_spec": "Build a personal portfolio website with a homepage, projects section, about section, and a way for visitors to contact the owner.",
+  "gold_assumptions": [
+    {
+      "id": "A1",
+      "statement": "The contact feature must be a real submission form rather than only a mailto link.",
+      "type": "Functional",
+      "source_span": "full_spec sentence 1",
+      "impact": "Without this assumption, the agent may not build the contact workflow required by the task.",
+      "required_for_success": true
+    },
+    {
+      "id": "A2",
+      "statement": "The contact form requires a backend endpoint and server-side message persistence.",
+      "type": "Implementation",
+      "source_span": "full_spec sentence 2",
+      "impact": "A static implementation would fail to save messages for later review.",
+      "required_for_success": true
+    },
+    {
+      "id": "A3",
+      "statement": "The project must be deployable to Vercel.",
+      "type": "Environment",
+      "source_span": "full_spec sentence 3",
+      "impact": "Deployment choices and configuration may differ if Vercel support is omitted.",
+      "required_for_success": false
+    },
+    {
+      "id": "A4",
+      "statement": "The UI must be responsive on both mobile and desktop layouts.",
+      "type": "Validation",
+      "source_span": "full_spec sentence 3",
+      "impact": "The final site may fail the acceptance checklist on smaller screens.",
+      "required_for_success": false
+    },
+    {
+      "id": "A5",
+      "statement": "The pilot requires a simple protected admin page for reviewing stored messages.",
+      "type": "Functional",
+      "source_span": "full_spec sentence 4",
+      "impact": "Without this assumption, the backend storage cannot be inspected during evaluation.",
+      "required_for_success": false
+    }
+  ],
+  "redaction_rationale": [
+    "Removed backend and persistence requirements to force a static-vs-dynamic implementation assumption.",
+    "Removed deployment and responsiveness requirements to create environment and validation assumptions.",
+    "Removed the admin review page to create a hidden product-scope assumption."
+  ],
+  "acceptance_tests": [
+    "Projects and about sections render successfully.",
+    "A contact submission path exists and stores data server-side.",
+    "A reviewer can view stored messages through the admin page.",
+    "The project includes Vercel deployment configuration.",
+    "The site remains usable on a mobile viewport."
+  ]
+}

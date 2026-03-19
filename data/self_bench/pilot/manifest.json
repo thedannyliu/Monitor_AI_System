@@ -1,0 +1,10 @@
+{
+  "benchmark": "self_bench",
+  "tasks": [
+    "data/self_bench/tasks/self_portfolio_001.json",
+    "data/self_bench/tasks/self_dashboard_001.json",
+    "data/self_bench/tasks/self_api_001.json",
+    "data/self_bench/tasks/self_cli_001.json",
+    "data/self_bench/tasks/self_blog_001.json"
+  ]
+}

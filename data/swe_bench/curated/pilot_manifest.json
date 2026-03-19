@@ -1,0 +1,172 @@
+{
+  "benchmark": "swe_bench",
+  "tasks": [
+    {
+      "task_id": "SWE-astropy__astropy-12907",
+      "instance_id": "astropy__astropy-12907",
+      "repo": "astropy/astropy",
+      "source": "SWE-bench Lite",
+      "full_spec": "Modeling's separability_matrix does not compute separability correctly for nested CompoundModels. When a compound model is nested inside another compound model, the linear submodels should remain separable and independent in the output matrix, matching the expected behavior shown in the issue examples.",
+      "redacted_spec": "Fix separability_matrix so nested CompoundModels behave correctly.",
+      "gold_assumptions": [
+        {
+          "id": "A1",
+          "statement": "Nested compound models should preserve the separability of the embedded linear models.",
+          "type": "Validation",
+          "source_span": "full_spec sentence 2",
+          "impact": "A vague correctness fix may still compute the wrong dependency matrix.",
+          "required_for_success": true
+        },
+        {
+          "id": "A2",
+          "statement": "The expected behavior is defined by the issue's explicit matrix examples.",
+          "type": "Validation",
+          "source_span": "full_spec sentence 2",
+          "impact": "Without the examples, the implementation may choose the wrong separability semantics.",
+          "required_for_success": true
+        }
+      ],
+      "redaction_rationale": [
+        "Removed the explicit expected-behavior examples while preserving the bug identity."
+      ],
+      "acceptance_tests": [
+        "Nested compound models preserve separability for embedded linear submodels.",
+        "The computed matrix matches the intended behavior from the issue examples."
+      ]
+    },
+    {
+      "task_id": "SWE-astropy__astropy-14182",
+      "instance_id": "astropy__astropy-14182",
+      "repo": "astropy/astropy",
+      "source": "SWE-bench Lite",
+      "full_spec": "Please support header_rows in RestructuredText output. Writing an ascii.rst table with header_rows=[\"name\", \"unit\"] should work similarly to ascii.fixed_width output instead of raising TypeError from RST.__init__.",
+      "redacted_spec": "Add support for header rows in ReStructuredText table output.",
+      "gold_assumptions": [
+        {
+          "id": "A1",
+          "statement": "The ascii.rst writer must accept the header_rows argument without raising TypeError.",
+          "type": "Functional",
+          "source_span": "full_spec sentence 2",
+          "impact": "A partial implementation may still reject the documented API usage.",
+          "required_for_success": true
+        },
+        {
+          "id": "A2",
+          "statement": "The behavior should align with the existing ascii.fixed_width writer for name and unit rows.",
+          "type": "Validation",
+          "source_span": "full_spec sentence 2",
+          "impact": "Header support without matching output semantics would remain misaligned.",
+          "required_for_success": false
+        }
+      ],
+      "redaction_rationale": [
+        "Removed the concrete API example and comparison target while preserving the feature request."
+      ],
+      "acceptance_tests": [
+        "ascii.rst accepts header_rows.",
+        "The output includes the expected header rows.",
+        "The writer no longer raises TypeError for the documented call."
+      ]
+    },
+    {
+      "task_id": "SWE-astropy__astropy-14365",
+      "instance_id": "astropy__astropy-14365",
+      "repo": "astropy/astropy",
+      "source": "SWE-bench Lite",
+      "full_spec": "ascii.qdp currently assumes QDP commands are uppercase, but QDP itself is case-insensitive. The parser should accept lowercase commands such as 'read serr 1 2' and read the file with errors instead of raising ValueError for an unrecognized QDP line.",
+      "redacted_spec": "Fix ascii.qdp so it handles QDP commands correctly.",
+      "gold_assumptions": [
+        {
+          "id": "A1",
+          "statement": "QDP command parsing must be case-insensitive.",
+          "type": "Validation",
+          "source_span": "full_spec sentence 1",
+          "impact": "A narrower fix could still reject lowercase command lines.",
+          "required_for_success": true
+        },
+        {
+          "id": "A2",
+          "statement": "The parser should successfully read lowercase 'read serr' input with error columns.",
+          "type": "Functional",
+          "source_span": "full_spec sentence 2",
+          "impact": "The issue remains unresolved if lowercase inputs still fail at runtime.",
+          "required_for_success": true
+        }
+      ],
+      "redaction_rationale": [
+        "Removed the lowercase example and error-specific expectation."
+      ],
+      "acceptance_tests": [
+        "Lowercase QDP commands parse correctly.",
+        "Files using lowercase read serr syntax load without ValueError."
+      ]
+    },
+    {
+      "task_id": "SWE-astropy__astropy-14995",
+      "instance_id": "astropy__astropy-14995",
+      "repo": "astropy/astropy",
+      "source": "SWE-bench Lite",
+      "full_spec": "In v5.3, NDDataRef mask propagation fails when one operand does not have a mask. When one operand has no mask, the existing mask should be copied over instead of combining integer masks with None values, and arithmetic should preserve the previous behavior from v5.2.",
+      "redacted_spec": "Fix NDDataRef mask propagation when one operand lacks a mask.",
+      "gold_assumptions": [
+        {
+          "id": "A1",
+          "statement": "When one operand has no mask, the output should copy the existing mask from the other operand.",
+          "type": "Validation",
+          "source_span": "full_spec sentence 2",
+          "impact": "Alternative handling may still produce None-containing masks or runtime errors.",
+          "required_for_success": true
+        },
+        {
+          "id": "A2",
+          "statement": "The fix must restore the behavior that existed in v5.2.",
+          "type": "Environment",
+          "source_span": "full_spec sentence 2",
+          "impact": "A new but different behavior may still break compatibility expectations.",
+          "required_for_success": false
+        }
+      ],
+      "redaction_rationale": [
+        "Removed the detailed mask-copying semantics and compatibility target."
+      ],
+      "acceptance_tests": [
+        "Arithmetic with one missing mask no longer raises TypeError.",
+        "The existing mask is propagated correctly.",
+        "Behavior matches the intended pre-v5.3 semantics."
+      ]
+    },
+    {
+      "task_id": "SWE-astropy__astropy-6938",
+      "instance_id": "astropy__astropy-6938",
+      "repo": "astropy/astropy",
+      "source": "SWE-bench Lite",
+      "full_spec": "Possible bug in io.fits related to D exponents. The code in fitsrec.py calls replace on output_field when a format contains 'D', but replace is not in-place for chararray. The exponent-separator handling should behave correctly for D exponents instead of relying on an ineffective in-place operation.",
+      "redacted_spec": "Fix the io.fits handling of D exponents.",
+      "gold_assumptions": [
+        {
+          "id": "A1",
+          "statement": "The current issue comes from using a non-in-place chararray replace operation.",
+          "type": "Implementation",
+          "source_span": "full_spec sentence 2",
+          "impact": "A fix that ignores the actual mutation issue may leave the bug in place.",
+          "required_for_success": true
+        },
+        {
+          "id": "A2",
+          "statement": "Exponent-separator conversion for D-formatted values must still work after the change.",
+          "type": "Validation",
+          "source_span": "full_spec sentence 3",
+          "impact": "Removing the code without preserving behavior could cause a regression.",
+          "required_for_success": false
+        }
+      ],
+      "redaction_rationale": [
+        "Removed the concrete implementation clue and expected effect of the exponent conversion."
+      ],
+      "acceptance_tests": [
+        "D-exponent values are handled correctly.",
+        "The fix no longer depends on a non-in-place replace call."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,175 @@
+{
+  "benchmark": "fea_bench",
+  "tasks": [
+    {
+      "task_id": "FEA-Aider-AI__aider-207",
+      "instance_id": "Aider-AI__aider-207",
+      "repo": "Aider-AI/aider",
+      "source": "FEA-Bench Lite",
+      "full_spec": "Implement the behavior discussed in issue #200: when GPT is about to edit a dirty file, aider should automatically commit the dirty changes with a clear message before applying and committing GPT edits. The behavior must respect the --no-dirty-commits flag, which disables the pre-commit step and applies GPT edits directly.",
+      "redacted_spec": "Adjust aider's commit behavior around dirty files so editing can proceed without interrupting the user.",
+      "gold_assumptions": [
+        {
+          "id": "A1",
+          "statement": "Dirty changes should be auto-committed only for files that GPT is about to modify.",
+          "type": "Validation",
+          "source_span": "full_spec sentence 1",
+          "impact": "A broader auto-commit policy would change unrelated user files.",
+          "required_for_success": true
+        },
+        {
+          "id": "A2",
+          "statement": "The --no-dirty-commits flag must preserve the previous no-precommit behavior.",
+          "type": "Environment",
+          "source_span": "full_spec sentence 2",
+          "impact": "Ignoring the flag would break an existing user-facing control.",
+          "required_for_success": true
+        }
+      ],
+      "redaction_rationale": [
+        "Removed the exact auto-commit trigger and flag compatibility requirement."
+      ],
+      "acceptance_tests": [
+        "Dirty files edited by GPT are committed before GPT edits are applied.",
+        "Unrelated dirty files are not committed preemptively.",
+        "The --no-dirty-commits flag disables the pre-commit behavior."
+      ]
+    },
+    {
+      "task_id": "FEA-Project-MONAI__MONAI-465",
+      "instance_id": "Project-MONAI__MONAI-465",
+      "repo": "Project-MONAI/MONAI",
+      "source": "FEA-Bench Lite",
+      "full_spec": "Add support for loading a Decathlon datalist from a JSON configuration file. The implementation should work with the Decathlon dataset format commonly used by MONAI examples and include new tests and updated documentation.",
+      "redacted_spec": "Add support for loading a datalist from a JSON configuration file.",
+      "gold_assumptions": [
+        {
+          "id": "A1",
+          "statement": "The JSON format must follow the Decathlon datalist structure used in MONAI workflows.",
+          "type": "Environment",
+          "source_span": "full_spec sentence 1",
+          "impact": "A generic JSON loader could fail to match the expected dataset schema.",
+          "required_for_success": true
+        },
+        {
+          "id": "A2",
+          "statement": "The change must include both tests and documentation updates.",
+          "type": "Validation",
+          "source_span": "full_spec sentence 2",
+          "impact": "A code-only change would miss explicit deliverables in the task.",
+          "required_for_success": false
+        }
+      ],
+      "redaction_rationale": [
+        "Removed the Decathlon-specific schema constraint and the required verification/documentation work."
+      ],
+      "acceptance_tests": [
+        "The loader reads Decathlon-style datalist JSON.",
+        "New tests cover the feature.",
+        "Relevant documentation or docstrings are updated."
+      ]
+    },
+    {
+      "task_id": "FEA-PyThaiNLP__pythainlp-1054",
+      "instance_id": "PyThaiNLP__pythainlp-1054",
+      "repo": "PyThaiNLP/pythainlp",
+      "source": "FEA-Bench Lite",
+      "full_spec": "Add pythainlp.lm.calculate_ngram_counts. The function should calculate counts of n-grams over a list of words for a specified n-gram range and return the aggregated counts in dictionary form, matching the usage example shown in the pull request.",
+      "redacted_spec": "Add a language-model utility function for n-gram counts.",
+      "gold_assumptions": [
+        {
+          "id": "A1",
+          "statement": "The new function belongs in pythainlp.lm and is named calculate_ngram_counts.",
+          "type": "Implementation",
+          "source_span": "full_spec sentence 1",
+          "impact": "Placing the feature elsewhere would mismatch the expected API.",
+          "required_for_success": true
+        },
+        {
+          "id": "A2",
+          "statement": "The function must support a configurable n-gram range and return counts as a dictionary keyed by tuples.",
+          "type": "Functional",
+          "source_span": "full_spec sentence 2",
+          "impact": "A fixed-size or differently typed result would violate the intended interface.",
+          "required_for_success": true
+        }
+      ],
+      "redaction_rationale": [
+        "Removed the public API name and the exact output semantics."
+      ],
+      "acceptance_tests": [
+        "The function is importable from pythainlp.lm.",
+        "It supports a configurable n-gram range.",
+        "The returned object matches the documented counting behavior."
+      ]
+    },
+    {
+      "task_id": "FEA-RDFLib__rdflib-1968",
+      "instance_id": "RDFLib__rdflib-1968",
+      "repo": "RDFLib/rdflib",
+      "source": "FEA-Bench Lite",
+      "full_spec": "Add a chunk serializer with tests. Provide a function named serialize_in_chunks that serializes a Graph into multiple NT files constrained by either a maximum triple count or maximum file size. When requested, prefixes from the original graph should be preserved in the first output file, which becomes a Turtle file.",
+      "redacted_spec": "Add a serializer that can write graph data in chunks, along with tests.",
+      "gold_assumptions": [
+        {
+          "id": "A1",
+          "statement": "The serializer must support chunking by maximum triple count or maximum file size.",
+          "type": "Functional",
+          "source_span": "full_spec sentence 2",
+          "impact": "A simpler chunking strategy would miss required output controls.",
+          "required_for_success": true
+        },
+        {
+          "id": "A2",
+          "statement": "When prefixes are preserved, the first chunk should be Turtle rather than NT.",
+          "type": "Validation",
+          "source_span": "full_spec sentence 3",
+          "impact": "Preserving prefixes incorrectly would break the expected serialization behavior.",
+          "required_for_success": false
+        }
+      ],
+      "redaction_rationale": [
+        "Removed the exact output controls and prefix-preservation behavior."
+      ],
+      "acceptance_tests": [
+        "Chunking works for both triple-count and file-size limits.",
+        "Tests cover the new serializer.",
+        "Prefix-preservation behavior matches the documented output format."
+      ]
+    },
+    {
+      "task_id": "FEA-RDFLib__rdflib-968",
+      "instance_id": "RDFLib__rdflib-968",
+      "repo": "RDFLib/rdflib",
+      "source": "FEA-Bench Lite",
+      "full_spec": "Implement Graph.cbd for Concise Bounded Description. The method should extract a subgraph from a source graph following the W3C member submission rules, include documentation, and act as groundwork for future SPARQL DESCRIBE support.",
+      "redacted_spec": "Implement a new graph method for concise bounded description.",
+      "gold_assumptions": [
+        {
+          "id": "A1",
+          "statement": "The new API must be a Graph method named cbd.",
+          "type": "Implementation",
+          "source_span": "full_spec sentence 1",
+          "impact": "A differently named helper or module-level function would not match the requested interface.",
+          "required_for_success": true
+        },
+        {
+          "id": "A2",
+          "statement": "The implementation must follow the W3C concise bounded description rules and include documentation.",
+          "type": "Validation",
+          "source_span": "full_spec sentence 1",
+          "impact": "A partial implementation without documentation would not satisfy the task intent.",
+          "required_for_success": true
+        }
+      ],
+      "redaction_rationale": [
+        "Removed the exact API placement and standards-based behavior requirement."
+      ],
+      "acceptance_tests": [
+        "A Graph.cbd method exists.",
+        "The extracted subgraph follows the expected concise bounded description behavior.",
+        "Documentation covers the new method."
+      ]
+    }
+  ]
+}

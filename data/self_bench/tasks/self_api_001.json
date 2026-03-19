@@ -1,0 +1,61 @@
+{
+  "task_id": "self-api-001",
+  "benchmark": "self_bench",
+  "domain": "api_service",
+  "starter_repo": "starter_repos/api_basic",
+  "full_spec": "Implement a task tracking API with endpoints to create, list, update, and delete tasks. Store tasks in PostgreSQL, expose pagination on the list endpoint, and validate due dates as ISO 8601 strings. Preserve backward compatibility for the existing /health route and add unit tests for validation failures and pagination behavior.",
+  "redacted_spec": "Implement a task tracking API with endpoints to create, list, update, and delete tasks.",
+  "gold_assumptions": [
+    {
+      "id": "A1",
+      "statement": "Tasks must be stored in PostgreSQL instead of an in-memory structure.",
+      "type": "Implementation",
+      "source_span": "full_spec sentence 2",
+      "impact": "Persistence and schema design differ significantly if storage is unspecified.",
+      "required_for_success": true
+    },
+    {
+      "id": "A2",
+      "statement": "The list endpoint requires pagination.",
+      "type": "Functional",
+      "source_span": "full_spec sentence 2",
+      "impact": "A plain list endpoint would fail the expected API behavior.",
+      "required_for_success": true
+    },
+    {
+      "id": "A3",
+      "statement": "Due dates must be validated as ISO 8601 strings.",
+      "type": "Validation",
+      "source_span": "full_spec sentence 2",
+      "impact": "Without strict validation, malformed dates may be accepted.",
+      "required_for_success": false
+    },
+    {
+      "id": "A4",
+      "statement": "The existing /health route must remain backward compatible.",
+      "type": "Environment",
+      "source_span": "full_spec sentence 3",
+      "impact": "Refactoring could break an existing route relied on by deployment checks.",
+      "required_for_success": false
+    },
+    {
+      "id": "A5",
+      "statement": "Unit tests must cover pagination and validation failures.",
+      "type": "Validation",
+      "source_span": "full_spec sentence 3",
+      "impact": "The implementation may appear correct while missing expected verification coverage.",
+      "required_for_success": false
+    }
+  ],
+  "redaction_rationale": [
+    "Removed storage backend and pagination details to create implementation and behavior ambiguity.",
+    "Removed validation and compatibility requirements to create hidden acceptance constraints."
+  ],
+  "acceptance_tests": [
+    "CRUD endpoints work for persisted tasks.",
+    "Task listing supports pagination.",
+    "Invalid due dates are rejected.",
+    "The /health route still returns the expected response.",
+    "Unit tests cover pagination and validation error cases."
+  ]
+}
